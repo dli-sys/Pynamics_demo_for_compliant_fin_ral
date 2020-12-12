@@ -15,4 +15,9 @@ Pynamics Demo Repository for RA-L submission.
  *Please follow the insturction on: https://github.com/CMA-ES/pycma
  
  
-## 
+## Simulation: Origami plate dragging back and forth
+Please run
+## Simulation: Robot swimming example
+Please Run
+## Maxmizing Swimming efficiency
+Pleasse Run
