@@ -11,8 +11,7 @@ Pynamics Demo Repository for RA-L submission.
  ```
  
  ## Install PyCMA
- 
- *Please follow the insturction on: https://github.com/CMA-ES/pycma
+  Please follow the insturction on: https://github.com/CMA-ES/pycma
  
  
 ## Simulation: Origami plate dragging back and forth
