@@ -15,7 +15,7 @@ Pynamics Demo Repository for RA-L submission.
  
  
 ## Using a Python IDE
-    We commancd using Spyder for running the demo codes. Spyder can be downloaded from: https://www.spyder-ide.org/
+We commancd using Spyder for running the demo codes. Spyder can be downloaded from: https://www.spyder-ide.org/
 ## Parameter fitting: Use experimental data to find optimized damping ratio (Section IV-C)
 Please run: use_exp_fit_plate_dragging.py  In Spyder, after open the .py file, Run file or press F5 on keyboard to run this simulation.
 ## Simulation: Origami plate dragging back and forth(Large Amplitude in Section IV-B)
