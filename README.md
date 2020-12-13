@@ -12,10 +12,11 @@ Pynamics Demo Repository for RA-L submission.
  ## Install PyCMA
   Please follow the insturction on: https://github.com/CMA-ES/pycma
 ## Using a Python IDE
-    We commancd using Spyder for running the demo codes. Spyder can be downloaded from: https://www.spyder-ide.org/
+    We commancd using Spyder for running the demo codes. Our code is only tested in this environment. Spyder can be downloaded from: https://www.spyder-ide.org/
 
 ## Parameter fitting: Use experimental data to find optimized damping ratio (Section IV-C)
     Please run: use_exp_fit_plate_dragging.py  In Spyder, after open the .py file, Run file or press F5 on keyboard to run this simulation.
+    fit_qs.py is the file where we store our experimental data, please make sure it's placed in the same directory.
 
 ## Simulation: Origami plate dragging back and forth(Large Amplitude in Section IV-B)
     Please run plate_dragging_demo_origami_large.py.
