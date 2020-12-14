@@ -1,14 +1,18 @@
 # Pynamics_demo
 Pynamics Demo Repository for RA-L submission. 
 ## Install Pynamics
-* go to https://github.com/idealabasu/code_pynamics, download the code;
-* install Pynamics via python setup.py install. We recommanded this method to get latest version of Pynamics;
+* Go to https://github.com/idealabasu/code_pynamics, download the code;
+* Install Pynamics via python setup.py install. We recommanded this method to get latest version of Pynamics;
 * Test Pynamics in your Python IDE using the following command:
 ```python
     pynamics.__init__("Test")
  ```
+* Or run one basic example located in https://github.com/idealabasu/code_pynamics/blob/master/python/pynamics_examples/pendulum_2_ways.py。
+If Pynamics is correctly installed, one output video will be created as:
+![alt text](https://github.com/gdbbzq/Pynamics_demo/blob/main/pynamics_demo.gif)
+
 ## Install FFmpeg
-In Pynamics, we use FFmpeg to generate the simulation video. Please install FFmpeg to see the output video. Official website: https://ffmpeg.org/
+In Pynamics, we use FFmpeg to generate the simulaticon video. Please install FFmpeg to see the output video. Official website: https://ffmpeg.org/
  ## Install PyCMA
 Please follow the insturction on: https://github.com/CMA-ES/pycma
 ## Using a Python IDE
