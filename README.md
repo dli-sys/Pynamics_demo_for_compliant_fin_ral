@@ -19,15 +19,23 @@ fit_qs.py is the file where we store our experimental data, please make sure it'
 
 ## Simulation: Origami plate dragging back and forth(Large Amplitude in Section IV-B)
 Please run plate_dragging_demo_origami_large.py
+Demo video:
+![alt text](https://github.com/gdbbzq/Pynamics_demo/blob/main/demo_videos/plate_dragging_demo_origami_large.gif)
 
 ## Simulation: Soft plate dragging back and forth(Large Amplitude in Section IV-B)
 Please run: plate_dragging_demo_soft_large_amp.py
+Demo video:
+![alt text](https://github.com/gdbbzq/Pynamics_demo/blob/main/demo_videos/plate_dragging_demo_soft_large_amp.gif)
 
 ## Simulation: Soft plate dragging back and forth(Small Amplitude in Section IV-B)
 Please run: plate_dragging_demo_soft_small_amp.py
+Webpage preview might not show the video correctly, we recommand download the video. Demo video:
+![alt text](https://github.com/gdbbzq/Pynamics_demo/blob/main/demo_videos/plate_dragging_demo_soft_small_amp.gif)
 
 ## Simulation: Robot swimming example (Section IV-D)
 Please Run: robot_swimming_demo.py
+Webpage preview might not show the video correctly, we recommand download the video. Demo video:
+![alt text](https://github.com/gdbbzq/Pynamics_demo/blob/main/demo_videos/robot_swimming_demo.gif)
 
 ## Maxmizing Swimming efficiency (Section IV-D)
 Please Run: optimize_robot.py
