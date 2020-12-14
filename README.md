@@ -8,7 +8,7 @@ Pynamics Demo Repository for RA-L submission.
     pynamics.__init__("Test")
  ```
 ## Install FFmpeg
-In Pynamics, we use FFmpeg to generate the simulation video. Please install FFmpeg to see the output video.
+In Pynamics, we use FFmpeg to generate the simulation video. Please install FFmpeg to see the output video. Official website: https://ffmpeg.org/
  ## Install PyCMA
 Please follow the insturction on: https://github.com/CMA-ES/pycma
 ## Using a Python IDE
