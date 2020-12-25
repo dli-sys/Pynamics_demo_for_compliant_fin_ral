@@ -1,14 +1,14 @@
-# Pynamics_demo
-Pynamics Demo Repository for RA-L submission. 
-## Install Pynamics
+# pynamics_demo
+pynamics Demo Repository for RA-L submission. 
+## Install pynamics
 * Go to https://github.com/idealabasu/code_pynamics, download the code;
-* Install Pynamics via python setup.py install. We recommanded this method to get latest version of Pynamics;
-* In Pynamics, we use FFmpeg to generate the simulaticon video. Please install FFmpeg to see the output video. Official website: https://ffmpeg.org/
-* To see if Pynamics is correctly installed, type 
+* Install pynamics via python setup.py install. We recommanded this method to get latest version of pynamics;
+* In pynamics, we use FFmpeg to generate the simulaticon video. Please install FFmpeg to see the output video. Official website: https://ffmpeg.org/
+* To see if pynamics is correctly installed, type 
 ```python
 import pynamics
 ```
-If no error or exception was given, Pynamics is correctly installed.
+If no error or exception was given, pynamics is correctly installed.
 
  ## Install PyCMA
 Please follow the insturction on: https://github.com/CMA-ES/pycma
@@ -23,22 +23,22 @@ fit_qs.py is the file where we store our experimental data, please make sure it'
 ## Simulation: Origami plate dragging back and forth(Large Amplitude in Section IV-B)
 Please run plate_dragging_demo_origami_large.py
 Demo video:
-![alt text](https://github.com/gdbbzq/Pynamics_demo/blob/main/demo_videos/plate_dragging_demo_origami_large.gif)
+![alt text](https://github.com/gdbbzq/pynamics_demo/blob/main/demo_videos/plate_dragging_demo_origami_large.gif)
 
 ## Simulation: Soft plate dragging back and forth(Large Amplitude in Section IV-B)
 Please run: plate_dragging_demo_soft_large_amp.py
 Demo video:
-![alt text](https://github.com/gdbbzq/Pynamics_demo/blob/main/demo_videos/plate_dragging_demo_soft_large_amp.gif)
+![alt text](https://github.com/gdbbzq/pynamics_demo/blob/main/demo_videos/plate_dragging_demo_soft_large_amp.gif)
 
 ## Simulation: Soft plate dragging back and forth(Small Amplitude in Section IV-B)
 Please run: plate_dragging_demo_soft_small_amp.py
 Webpage preview might not show the video correctly, we recommand download the video. Demo video:
-![alt text](https://github.com/gdbbzq/Pynamics_demo/blob/main/demo_videos/plate_dragging_demo_soft_small_amp.gif)
+![alt text](https://github.com/gdbbzq/pynamics_demo/blob/main/demo_videos/plate_dragging_demo_soft_small_amp.gif)
 
 ## Simulation: Robot swimming example (Section IV-D)
 Please Run: robot_swimming_demo.py
 Webpage preview might not show the video correctly, we recommand download the video. Demo video:
-![alt text](https://github.com/gdbbzq/Pynamics_demo/blob/main/demo_videos/robot_swimming_demo.gif)
+![alt text](https://github.com/gdbbzq/pynamics_demo/blob/main/demo_videos/robot_swimming_demo.gif)
 
 ## Maxmizing Swimming efficiency (Section IV-D)
 Please Run: optimize_robot.py
