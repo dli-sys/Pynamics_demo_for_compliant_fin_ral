@@ -1,4 +1,4 @@
-# pynamics_demo
+# Pynamics_demo_for_compliant_fin_ral
 pynamics Demo Repository for RA-L submission. 
 ## Install pynamics
 * Go to https://github.com/idealabasu/code_pynamics, download the code;
