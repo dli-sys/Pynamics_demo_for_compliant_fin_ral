@@ -301,7 +301,7 @@ def cal_eff(x,x1,video_flag):
         virtual_vel = 0
         ini_states = numpy.array([0,0, a2, a2, a2, a2 ,virtual_vel*direction,0, omega, 0,0,0])
         system1 = System()
-        final1,states1,y1 = Cal_robot(direction,given_l,omega,a1,a2,ini_states,'robot_p1.mp4',system1,video_on,x1)
+        final1,states1,y1 = Cal_robot(direction,given_l,omega,a1,a2,ini_states,'robot_p1.gif',system1,video_on,x1)
         
         direction  = -1
         omega = direction*omega1
@@ -327,6 +327,7 @@ def cal_eff(x,x1,video_flag):
         plt.plot(dis*1000)
         plt.title("Robot distance over time")
         plt.ylabel("Distance (mm)")
+        plt.show()
     else:
         pass
     total_eta = ieta+error1+error2
@@ -335,7 +336,7 @@ def cal_eff(x,x1,video_flag):
 def cal_eff1(x):
     print(x)
     x1 = [1.63587104, 1.25042469]
-    total_eta,forward_dis,backward_dis = cal_eff(x,x1,0)
+    total_eta,forward_dis,backward_dis = cal_eff(x,x1,1)
     return total_eta
 
 
