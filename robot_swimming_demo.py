@@ -7,6 +7,8 @@ from pynamics.dyadic import Dyadic
 from pynamics.output import Output,PointsOutput
 from pynamics.particle import Particle
 import pynamics.integration
+import pynamics.tanh as tanh
+
 import logging
 import sympy
 #import sympy
@@ -16,7 +18,7 @@ from math import pi
 import scipy
 import scipy.optimize
 from sympy import sin,cos
-import pynamics.tanh as tanh
+
 import cma
 import time
 
