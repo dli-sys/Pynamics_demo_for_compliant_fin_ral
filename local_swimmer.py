@@ -1,89 +1,57 @@
+import sys
+import os
+
 import pynamics
-import pynamics.frame
+from pynamics.frame import Frame
 from pynamics.variable_types import Differentiable,Constant
 from pynamics.system import System
 from pynamics.body import Body
 from pynamics.dyadic import Dyadic
 from pynamics.output import Output,PointsOutput
-from pynamics.particle import Particle
+from pynamics.particle import Particle, PseudoParticle
 import pynamics.integration
-import pynamics.tanh as tanh
-
-
-#   as pynamics
-# import code_pynamics.python.pynamics.frame as Frame
-#
-# from code_pynamics.python.pynamics.frame import Frame
-# from code_pynamics.python.pynamics.variable_types import Differentiable,Constant
-# from code_pynamics.python.pynamics.system import System
-# from code_pynamics.python.pynamics.body import Body
-# from code_pynamics.python.pynamics.dyadic import Dyadic
-# from code_pynamics.python.pynamics.output import Output,PointsOutput
-from code_pynamics.python.pynamics.particle import Parti
-import code_pynamics.python.pynamics.tanh as tanh
-
-
-
-
-# from code_pynamics.python import pynamics
-# import pynamics
-
-# from code_pynamics.python.pynamics.frame import Frame
-# from code_pynamics.python.pynamics.variable_types import Differentiable, Constant
-# from code_pynamics.python.pynamics.system import System
-# from code_pynamics.python.pynamics.body import Body
-# from code_pynamics.python.pynamics.dyadic import Dyadic
-# from code_pynamics.python.pynamics.output import Output, PointsOutput
-# from code_pynamics.python.pynamics.particle import Particle
-# import code_pynamics.python.pynamics.integration
-
+import logging
+import time
 
 from numpy import pi
 import matplotlib
-# matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
+import sympy
+import numpy
+import scipy
+import scipy.optimize
+from sympy import sin, cos
+
+# import cma
 
 plt.close('all')
 plt.ion()
 
-import sympy
-# import sympy
-import numpy
-
-from math import pi
-import scipy
-import scipy.optimize
-from sympy import sin, cos
-import pynamics.tanh as tanh
-import cma
-import time
-
-def Cal_robot(direction, given_l, angular_vel,start_angle, end_angle, ini_states, name1, system, video_on, x1,force_coeff):
+def Cal_robot(system,direction, angular_vel,start_angle, end_angle, ini_states,force_coeff,sim_time=False,video_on=True,video_name="swimming.gif"):
 
   [body_force,arm_force_prep,arm_force_par] = force_coeff
 
-  time_a = time.time()
+  # time_a = time.time()
   pynamics.set_system(__name__, system)
-  given_k, given_b = x1
   global_q = True
 
-  damping_r = 0
+  if sim_time is False:
+    tfinal = abs((start_angle - end_angle) / angular_vel)
+  else:
+    tfinal = sim_time
   tinitial = 0
-  tfinal = abs((start_angle - end_angle) / angular_vel)
   tstep = 1 / 30
   t = numpy.r_[tinitial:tfinal:tstep]
 
-  tol_1 = 1e-6
-  tol_2 = 1e-6
+  tol_1 = 0
+  tol_2 = 1e-8
   lO = Constant(20 / 1000, 'lO', system)
   lR = Constant(40 / 1000, 'lR', system)
-  # lA = Constant(given_l / 1000, 'lA', system)
-  # lB = Constant(given_l / 1000, 'lB', system)
-  # lC = Constant(given_l / 1000, 'lC', system)
 
-  mO = Constant(60 / 1000, 'mO', system)
-  mR = Constant(10 / 1000, 'mR', system)
-  k = Constant(given_k, 'k', system)
+
+  mO = Constant(300 / 1000, 'mO', system)
+  mR = Constant(300 / 1000, 'mR', system)
+  # k = Constant(given_k, 'k', system)
 
   friction_arm_perp = Constant(arm_force_prep, 'fr_perp', system)
   friction_arm_par = Constant(arm_force_par, 'fr_par', system)
@@ -117,7 +85,6 @@ def Cal_robot(direction, given_l, angular_vel,start_angle, end_angle, ini_states
   O = Frame('O')
   R = Frame('R')
 
-
   system.set_newtonian(N)
   if not global_q:
     O.rotate_fixed_axis_directed(N, [0, 0, 1], qO, system)
@@ -136,10 +103,8 @@ def Cal_robot(direction, given_l, angular_vel,start_angle, end_angle, ini_states
   pOcm = pNO + lO / 2 * N.x
   pRcm = pOR + lR / 2 * R.x
 
-
   wNO = N.getw_(O)
   wOR = N.getw_(R)
-
 
   IO = Dyadic.build(O, Ixx_O, Iyy_O, Izz_O)
   IR = Dyadic.build(R, Ixx_R, Iyy_R, Izz_R)
@@ -147,20 +112,19 @@ def Cal_robot(direction, given_l, angular_vel,start_angle, end_angle, ini_states
   BodyO = Body('BodyO', O, pOcm, mO, IO, system)
   BodyR = Body('BodyR', R, pRcm, mR, IR, system)
 
-  j_tol = 3 * pi / 180
-  inv_k = 10
+  # j_tol = 3 * pi / 180
+  # inv_k = 10
 
 
   vOcm = y_d * N.y
   vRcm = pRcm.time_derivative()
-
 
   nvRcm = 1 / (vRcm.length() + tol_1) * vRcm
 
   vSoil = -direction * 1 * N.y
   nSoil = 1 / vSoil.length() * vSoil
   foperp = body_force * nSoil
-  system.addforce(-foperp, vOcm)
+  system.addforce(foperp, vOcm)
 
   frperp = friction_arm_perp * nvRcm.dot(R.y) * R.y
   frpar = friction_arm_par * nvRcm.dot(R.x) * R.x
@@ -169,7 +133,7 @@ def Cal_robot(direction, given_l, angular_vel,start_angle, end_angle, ini_states
 
   eq = []
   eq_d = [(system.derivative(item)) for item in eq]
-  eq_d.append(qR_d - angular_vel)
+  eq_d.append(qR_d - angular_vel) # to make qR_d is zero
   eq_dd = [(system.derivative(item)) for item in eq_d]
 
   f, ma = system.getdynamics()
@@ -179,28 +143,53 @@ def Cal_robot(direction, given_l, angular_vel,start_angle, end_angle, ini_states
 
   constants = system.constant_values
   states = pynamics.integration.integrate_odeint(func1, ini, t, args=({'constants': constants},))
+  # plt.plot(states[:,0])
   final = numpy.asarray(states[-1, :])
 
 
-  logger1 = logging.getLogger('pynamics.system')
-  logger2 = logging.getLogger('pynamics.integration')
-  logger3 = logging.getLogger('pynamics.output')
-  logger1.disabled = True
-  logger2.disabled = True
-  logger3.disabled = True
+  # logger1 = logging.getLogger('pynamics.system')
+  # logger2 = logging.getLogger('pynamics.integration')
+  # logger3 = logging.getLogger('pynamics.output')
+  # logger1.disabled = True
+  # logger2.disabled = True
+  # logger3.disabled = True
 
   # Here is how to use points to calculatethe video
   points_output = PointsOutput(points, system, constant_values=constants)
   y1 = points_output.calc(states)
-  points_output.animate(fps=1 / tstep, movie_name=name1, lw=2, marker='o', color=(1, 0, 0, 1), linestyle='-')
-  plt.xlim(0,0.06)
-  plt.ylim(-0.5,0.5)
+  points_output.animate(fps=1 / tstep, movie_name=video_name, lw=2, marker='o', color=(1, 0, 0, 1), linestyle='-')
+  # print(forward_limits)
   # plt.axis("equal")
   # plt.ion()
-  plt.show()
-  # plt.plot(states[:,0:3])
 
-  if video_on == 1:
+  plt.figure()
+  plt.plot(states[:,2])
+  # plt.plot(numpy.rad2deg(states[:,2]))
+  plt.show()
+
+  if video_on:
+
+    plt.figure()
+    plt.plot(*(y1[0:10,::].T * 1000))
+    plt.title("First couple of video")
+    plt.show()
+
+    plt.figure()
+    plt.plot(*(y1[-10::,::].T * 1000))
+    plt.title("Last couple of video")
+    plt.show()
+
+    plt.figure()
+    plt.plot(*(y1[0:int(len(y1) / 30):,0:2].T * 1000))
+    plt.title("Body location")
+    plt.show()
+
+    plt.figure()
+    plt.plot(*(y1[0:int(len(y1) / 30):, 1:3].T * 1000))
+    plt.title("FIn location")
+    plt.show()
+
+
     plt.figure()
     plt.plot(*(y1[::int(len(y1) / 20)].T) * 1000)
     # plt.axis('equal')
@@ -208,7 +197,7 @@ def Cal_robot(direction, given_l, angular_vel,start_angle, end_angle, ini_states
     plt.title("Plate Configuration vs Distance")
     # plt.xlabel("Configuration")
     plt.ylabel("Distance (mm)")
-
+    plt.show()
     # plt.figure()
     # plt.plot(t, numpy.rad2deg(states[:, 2]))
     # # plt.plot(t, numpy.rad2deg(states[:, 8]))
@@ -252,87 +241,70 @@ def Cal_robot(direction, given_l, angular_vel,start_angle, end_angle, ini_states
 
 def cal_eff(video_flag):
 
-  # if (0 <= start_angle) & (start_angle <= 90):
-  #   error1 = 0
-  # else:
-  #   print("Theta_1 should <=90!!! and >=0!!!")
-  #   error1 = 1e5
-  # if (-50 <= end_angle) & (end_angle <= 0):
-  #   error2 = 0
-  # else:
-  #   error2 = 1e5
-  #   print("Theta_2 should <=0!!! and >=-50!!!")
-  if True:
 
   # if error1 + error2 == 0:
-    logger1 = logging.getLogger('pynamics.system')
-    logger2 = logging.getLogger('pynamics.integration')
-    logger3 = logging.getLogger('pynamics.output')
+  # logger1 = logging.getLogger('pynamics.system')
+  # logger2 = logging.getLogger('pynamics.integration')
+  # logger3 = logging.getLogger('pynamics.output')
+  #
+  # logger1.disabled = True
+  # logger2.disabled = True
+  # logger3.disabled = True
+  direction = 1
 
-    logger1.disabled = True
-    logger2.disabled = True
-    logger3.disabled = True
-    direction = 1
+  # Looks like a2 is the initial angle of the arm, vir_vel is the initial velocity, omega is some angular velocity or angle
+  # DEfination
+  # [y,qO,qR,y_d,qO_d,qR_d]
+  # End def
+  servo_speed = pi/1
+  ini_angle = pi/6
+  stroke_angle = pi/3
+  ini_states = numpy.array([0, 0, ini_angle, 0, 0, servo_speed])
+  start_angle, end_angle = [ini_angle, ini_angle+stroke_angle]
+  fin_drag_reduction_coef = 1
+  body_drag_reduction_coef = 1
+  fin_perp = 0.4
+  fin_par = -0.1
+  body_drag = 1
 
-    # Looks like a2 is the initial angle of the arm, vir_vel is the initial velocity, omega is some angular velocity or angle
-    # DEfination
-    # [y,qO,qR,y_d,qO_d,qR_d]
-    # End def
-    servo_speed = pi*10/180
-    ini_angle = -pi/3
-    ini_states = numpy.array([0, 0, ini_angle, 0, 0, servo_speed])
-    stroke_angle = 2*pi/3
-    system1 = System()
-    # In here we start calculate the front proposion
-    fin_drag_reduction_coef = 1
-    body_fin_drag_reduction_coef = 1
-    fin_perp = 4
-    fin_par = -0.1
-    body_drag = 2
-    video_on = video_flag
-    given_l = 20
-    start_angle, end_angle = [ini_angle, ini_angle+stroke_angle]
+  force_coeff_p = [body_drag,fin_perp*fin_drag_reduction_coef,fin_par*fin_drag_reduction_coef]
+  force_coeff_r = [body_drag*body_drag_reduction_coef, fin_perp, fin_par]
+  system1 = System()
+  final1, states1, y1,forward_points = Cal_robot(system1,direction, servo_speed, start_angle, end_angle, ini_states,force_coeff_p,video_name='robot_p1.gif',sim_time=20)
 
-    final1, states1, y1,forward_points = Cal_robot(direction, given_l, servo_speed, start_angle, end_angle, ini_states,'robot_p1.gif', system1, 1, [0, 0],[body_drag,fin_perp*fin_drag_reduction_coef,fin_par*fin_drag_reduction_coef])
+  # plt.plot(numpy.rad2deg(states1[:,2]))
+  # plt.show()
+  final = final1
+  final[3::] = 0
+  final[-1] = -servo_speed
 
-    # plt.plot(numpy.rad2deg(states1[:,2]))
-    # plt.show()
-    final = final1
-    final[3::] = 0
-    final[-1] = -servo_speed
-
-    system2 = System()
-    final2, states2, y2,recovery_points = Cal_robot(-direction, given_l, servo_speed, start_angle, end_angle, final,'robot_p2.gif', system2, 1, [0, 0],[body_drag*body_fin_drag_reduction_coef,fin_perp,fin_par])
+  system2 = System()
+  final2, states2, y2,recovery_points = Cal_robot(system2,-direction, servo_speed, start_angle, end_angle, final, force_coeff_r,video_name='robot_p2.gif,sim_time=20')
 
 
-    full_stroke_points = forward_points
-    # points_output = PointsOutput(full_stroke_points, system1, constant_values=constants)
-    # points_output.animate(fps=1 / tstep, movie_name=name1, lw=2, marker='o', color=(1, 0, 0, 1), linestyle='-')
+  full_stroke_points = forward_points
+  # points_output = PointsOutput(full_stroke_points, system1, constant_values=constants)
+  # points_output.animate(fps=1 / tstep, movie_name=video_name, lw=2, marker='o', color=(1, 0, 0, 1), linestyle='-')
 
-    dis1 = states1[:, 0]
-    dis2 = states2[:, 0]
-    dis = numpy.append(dis1, dis2)
-    real_dis = abs(dis[0] - dis[-1])
-    forward_dis = abs(dis1[0] - dis1[-1])
-    backward_dis = abs(dis2[0] - dis2[-1])
-    ieta = 1 - real_dis / abs(dis2[0] - dis2[-1])
-  else:
-    ieta = 1
-  if video_on == 1:
-    plt.figure()
-    plt.plot(dis * 1000)
-    plt.title("Robot distance over time")
-    plt.ylabel("Distance (mm)")
-    plt.show(block=True)
-  else:
-    pass
-  total_eta = ieta + error1 + error2
+  dis1 = states1[:, 0]
+  dis2 = states2[:, 0]
+  dis = numpy.append(dis1, dis2)
+  real_dis = abs(dis[0] - dis[-1])
+  forward_dis = abs(dis1[0] - dis1[-1])
+  backward_dis = abs(dis2[0] - dis2[-1])
+  ieta = 1 - real_dis / abs(dis2[0] - dis2[-1])
+
+
+  plt.figure()
+  plt.plot(dis * 1000)
+  plt.title("Robot distance over time")
+  plt.ylabel("Distance (mm)")
+  plt.show(block=True)
+
+  total_eta = ieta
+
   return total_eta, forward_dis, backward_dis
 
 
 if __name__ == "__main__":
-  total_eta, forward_dis, backward_dis = cal_eff( 1)
-
-  # x = [85, -10]
-  # # theta12 = [88,-10]
-  # cal_eff(x, [1.63587104, 1.25042469], 1)
+  total_eta, forward_dis, backward_dis = cal_eff(1)

@@ -19,7 +19,7 @@ import scipy
 import scipy.optimize
 from sympy import sin,cos
 
-import cma
+# import cma
 import time
 
 
