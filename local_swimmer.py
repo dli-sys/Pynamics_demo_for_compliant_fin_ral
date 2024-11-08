@@ -10,6 +10,7 @@ from pynamics.dyadic import Dyadic
 from pynamics.output import Output,PointsOutput
 from pynamics.particle import Particle, PseudoParticle
 import pynamics.integration
+from pynamics import tanh
 import logging
 import time
 
@@ -45,12 +46,12 @@ def Cal_robot(system,direction, angular_vel,start_angle, end_angle, ini_states,f
 
   tol_1 = 0
   tol_2 = 1e-8
-  lO = Constant(20 / 1000, 'lO', system)
-  lR = Constant(40 / 1000, 'lR', system)
+  lO = Constant(30 / 1000, 'lO', system)
+  lR = Constant(60 / 1000, 'lR', system)
 
 
-  mO = Constant(300 / 1000, 'mO', system)
-  mR = Constant(300 / 1000, 'mR', system)
+  mO = Constant(500 / 1000, 'mO', system)
+  mR = Constant(100 / 1000, 'mR', system)
   # k = Constant(given_k, 'k', system)
 
   friction_arm_perp = Constant(arm_force_prep, 'fr_perp', system)
@@ -124,7 +125,18 @@ def Cal_robot(system,direction, angular_vel,start_angle, end_angle, ini_states,f
   vSoil = -direction * 1 * N.y
   nSoil = 1 / vSoil.length() * vSoil
   foperp = body_force * nSoil
-  system.addforce(foperp, vOcm)
+
+
+  s = sympy.Symbol("v")
+  # vel_factor = tanh.gen_spring_force1(s, 1000, 0, 0, 1e3, 0e1, 0e1, plot=True)
+
+  vel_factor1 = tanh.gen_spring_force(vOcm, 1, 0, 0, 1, 0e1, 0e1, plot=False)
+
+  # vel_factor1 = sympy.tanh(s)
+
+  system.addforce(-foperp*vel_factor1, vOcm)
+
+
 
   frperp = friction_arm_perp * nvRcm.dot(R.y) * R.y
   frpar = friction_arm_par * nvRcm.dot(R.x) * R.x
@@ -256,21 +268,24 @@ def cal_eff(video_flag):
   # DEfination
   # [y,qO,qR,y_d,qO_d,qR_d]
   # End def
-  servo_speed = pi/1
+  servo_speed = pi/90
   ini_angle = pi/6
   stroke_angle = pi/3
   ini_states = numpy.array([0, 0, ini_angle, 0, 0, servo_speed])
   start_angle, end_angle = [ini_angle, ini_angle+stroke_angle]
   fin_drag_reduction_coef = 1
   body_drag_reduction_coef = 1
-  fin_perp = 0.4
+  fin_perp = 1
   fin_par = -0.1
-  body_drag = 1
+  body_drag = -2
 
   force_coeff_p = [body_drag,fin_perp*fin_drag_reduction_coef,fin_par*fin_drag_reduction_coef]
   force_coeff_r = [body_drag*body_drag_reduction_coef, fin_perp, fin_par]
+
+  sim_time = 10
+
   system1 = System()
-  final1, states1, y1,forward_points = Cal_robot(system1,direction, servo_speed, start_angle, end_angle, ini_states,force_coeff_p,video_name='robot_p1.gif',sim_time=20)
+  final1, states1, y1,forward_points = Cal_robot(system1,direction, servo_speed, start_angle, end_angle, ini_states,force_coeff_p,video_name='robot_p1.gif',sim_time=sim_time)
 
   # plt.plot(numpy.rad2deg(states1[:,2]))
   # plt.show()
@@ -279,7 +294,7 @@ def cal_eff(video_flag):
   final[-1] = -servo_speed
 
   system2 = System()
-  final2, states2, y2,recovery_points = Cal_robot(system2,-direction, servo_speed, start_angle, end_angle, final, force_coeff_r,video_name='robot_p2.gif,sim_time=20')
+  final2, states2, y2,recovery_points = Cal_robot(system2,-direction, servo_speed, start_angle, end_angle, final, force_coeff_r,video_name='robot_p2.gif',sim_time=sim_time)
 
 
   full_stroke_points = forward_points
