@@ -48,11 +48,11 @@ def Cal_robot(system,direction, angular_vel,start_angle, end_angle, ini_states,f
   tol_1 = 0
   tol_2 = 1e-8
   # Length of the body
-  lO = Constant(30 / 1000, 'lO', system)
+  lO = Constant(10 / 1000, 'lO', system)
   lR = Constant(60 / 1000, 'lR', system)
 
   # mass of the bodies
-  mO = Constant(200 / 1000, 'mO', system)
+  mO = Constant(300 / 1000, 'mO', system)
   mR = Constant(100 / 1000, 'mR', system)
   # k = Constant(given_k, 'k', system)
 
@@ -86,18 +86,18 @@ def Cal_robot(system,direction, angular_vel,start_angle, end_angle, ini_states,f
 
   statevariables = system.get_state_variables()
   ini = [initialvalues[item] for item in statevariables]
-  N = Frame('N')
-  O = Frame('O')
-  R = Frame('R')
+  N = Frame('N',system)
+  O = Frame('O',system)
+  R = Frame('R',system)
 
   system.set_newtonian(N)
   if not global_q:
-    O.rotate_fixed_axis_directed(N, [0, 0, 1], qO, system)
-    R.rotate_fixed_axis_directed(O, [0, 0, 1], qR, system)
+    O.rotate_fixed_axis(N, [0, 0, 1], qO, system)
+    R.rotate_fixed_axis(O, [0, 0, 1], qR, system)
 
   else:
-    O.rotate_fixed_axis_directed(N, [0, 0, 1], qO, system)
-    R.rotate_fixed_axis_directed(N, [0, 0, 1], qR, system)
+    O.rotate_fixed_axis(N, [0, 0, 1], qO, system)
+    R.rotate_fixed_axis(N, [0, 0, 1], qR, system)
 
 
   pNO = 0 * N.x + y * N.y
@@ -108,8 +108,9 @@ def Cal_robot(system,direction, angular_vel,start_angle, end_angle, ini_states,f
   pOcm = pNO + lO / 2 * N.x
   pRcm = pOR + lR / 2 * R.x
 
-  wNO = N.getw_(O)
-  wOR = N.getw_(R)
+  # w is the rotation velocity and R is the angle
+  wNO = N.get_w_to(O)
+  wOR = N.get_w_to(R)
 
   IO = Dyadic.build(O, Ixx_O, Iyy_O, Izz_O)
   IR = Dyadic.build(R, Ixx_R, Iyy_R, Izz_R)
@@ -130,25 +131,27 @@ def Cal_robot(system,direction, angular_vel,start_angle, end_angle, ini_states,f
   nSoil = 1 / vSoil.length() * vSoil
   foperp = body_force * nSoil
 
-  # vel_factor = tanh.gen_spring_force1(s, 1000, 0, 0, 1e3, 0e1, 0e1, plot=True)
+  vel_factor = tanh.gen_spring_force(vOcm.length(), 50, -0.25, 0.25, 1, 1, 0, plot=True)
+  plt.show()
+  plt.close('all')
   # y2 = y
-  vel_factor1 = tanh.gen_spring_force(y, 1, 0, 0, 1, 0e1, 0e1, plot=False)
+
   # looks like there should be no frame inside tanh such as N.y
 
-  vel_factor2 = tanh.gen_spring_force(vOcm.length(), 1, 0, 0, 1, 0e1, 0e1, plot=False)
-  # vel_factor1 = sympy.tanh(s)
+  # vel_factor2 = tanh.gen_spring_force2(vOcm.length(), 1000, 0, 0, 1, 1,0,plot=True)
 
-  test_subs = numpy.r_[-.5:.5:100j]
-  # Evulate if this method works. looks need some fine tuning so that .... less curve
+  # test_subs = numpy.r_[-2:2:100j]
+  # # Evulate if this method works. looks need some fine tuning so that .... less curve
   # vel_subs = numpy.array([vel_factor2.evalf(subs={y_d:item}) for item in test_subs])
   # plt.plot(test_subs,vel_subs)
+  #
   # plt.show()
   # plt.ion()
-  # End evulate
+  #   # End evulate
 
-  system.addforce(foperp*vel_factor2 , vOcm)
-
-  # system.addforce(-foperp*vel_factor1, vOcm)
+  # system.addforce(foperp*vel_factor2 , vOcm)
+  # system.addforce(foperp, vOcm)
+  system.addforce(-foperp*vel_factor, vOcm)
 
 
 
@@ -163,12 +166,20 @@ def Cal_robot(system,direction, angular_vel,start_angle, end_angle, ini_states,f
   eq_dd = [(system.derivative(item)) for item in eq_d]
 
   f, ma = system.getdynamics()
-  func1 = system.state_space_post_invert(f, ma, eq_dd)
+  func1,lambda1 = system.state_space_post_invert(f,ma,constants = system.constant_values,return_lambda=True)
   points = [pNO, pOR,pRA]
   # points = [pNO, pOR, pRA, pAB, pBC, pCtip]
 
-  constants = system.constant_values
-  states = pynamics.integration.integrate_odeint(func1, ini, t, args=({'constants': constants},))
+  alpha = 1e6
+  beta = 1e5
+  error = 1e-3
+  error_tol = 1e-3
+
+  states = pynamics.integration.integrate_odeint(func1, ini, t, rtol=1e-3, atol=1e-3,
+                                                 args=({'constants': {}, 'alpha': 1e2, 'beta': 1e1},))
+
+  # constants = system.constant_values
+  # states = pynamics.integration.integrate_odeint(func1, ini, t,rtol = error, atol = error,  args=({'alpha':alpha,'beta':beta, 'constants':system.constant_values}),full_output = 1,mxstep = int(1e5))
   # plt.plot(states[:,0])
   final = numpy.asarray(states[-1, :])
 
@@ -181,19 +192,28 @@ def Cal_robot(system,direction, angular_vel,start_angle, end_angle, ini_states,f
   # logger3.disabled = True
 
   # Here is how to use points to calculatethe video
-  points_output = PointsOutput(points, system, constant_values=constants)
-  y1 = points_output.calc(states)
-  points_output.animate(fps=1 / tstep, movie_name=video_name, lw=5, marker='d', color=(1, 0, 1, 1), linestyle='-')
+  points_output = PointsOutput(points, system, constant_values=system.constant_values)
+  y1 = points_output.calc(states,t)
+
   # print(forward_limits)
   # plt.axis("equal")
   # plt.ion()
 
+  # plt.figure()
+  # plt.plot(states[:,2])
+  # # plt.plot(numpy.rad2deg(states[:,2]))
+  # plt.show()
   plt.figure()
-  plt.plot(states[:,2])
-  # plt.plot(numpy.rad2deg(states[:,2]))
+  plt.plot(*(y1[::int(len(y1) / 20)].T) * 1000)
+  # plt.axis('equal')
+  # plt.axis('equal')
+  plt.title("Plate Configuration vs Distance")
+  # plt.xlabel("Configuration")
+  plt.ylabel("Distance (mm)")
   plt.show()
 
   if video_on:
+    points_output.animate(fps=1 / tstep, movie_name=video_name, lw=3, marker='o', color=(1, 0, 0, 1), linestyle='-')
     #
     # plt.figure()
     # plt.plot(*(y1[0:10,::].T * 1000))
@@ -216,14 +236,7 @@ def Cal_robot(system,direction, angular_vel,start_angle, end_angle, ini_states,f
     # plt.show()
 
 
-    plt.figure()
-    plt.plot(*(y1[::int(len(y1) / 20)].T) * 1000)
-    # plt.axis('equal')
-    # plt.axis('equal')
-    plt.title("Plate Configuration vs Distance")
-    # plt.xlabel("Configuration")
-    plt.ylabel("Distance (mm)")
-    plt.show()
+
     # plt.figure()
     # plt.plot(t, numpy.rad2deg(states[:, 2]))
     # # plt.plot(t, numpy.rad2deg(states[:, 8]))
@@ -282,17 +295,17 @@ def cal_eff(video_flag):
   # DEfination
   # [y,qO,qR,y_d,qO_d,qR_d]
   # End def
-  servo_speed = -pi/180*20
-  ini_angle = pi/6
-  stroke_angle = pi/3
+  servo_speed   = -pi/180*20
+  ini_angle     = pi/6
+  stroke_angle  = pi/3
   ini_states = numpy.array([0, 0, ini_angle, 0, 0, servo_speed])
   start_angle, end_angle = [ini_angle, ini_angle+stroke_angle]
   # Just add amplitude the direction is handlled inside
-  fin_drag_reduction_coef = 0.6
-  body_drag_reduction_coef = 0.6
-  fin_perp = 5.6
-  fin_par = -0.2
-  body_drag = 5
+  fin_drag_reduction_coef   = 0.7
+  body_drag_reduction_coef  = 0.7
+  fin_perp    = 5.6
+  fin_par     = -0.2
+  body_drag   = 10
 
   force_coeff_p = [body_drag,fin_perp*fin_drag_reduction_coef,fin_par*fin_drag_reduction_coef]
   force_coeff_r = [body_drag*body_drag_reduction_coef, fin_perp, fin_par]
@@ -300,7 +313,7 @@ def cal_eff(video_flag):
   sim_time = 3
 
   system1 = System()
-  final1, states1, y1,forward_points = Cal_robot(system1,direction, servo_speed, start_angle, end_angle, ini_states,force_coeff_p,video_name='robot_p1.gif',sim_time=sim_time)
+  final1, states1, y1,forward_points = Cal_robot(system1,direction, servo_speed, start_angle, end_angle, ini_states,force_coeff_p,video_on=False,video_name='robot_p1.gif',sim_time=sim_time)
 
   # plt.plot(numpy.rad2deg(states1[:,2]))
   # plt.show()
@@ -309,7 +322,7 @@ def cal_eff(video_flag):
   final[-1] = -servo_speed
 
   system2 = System()
-  final2, states2, y2,recovery_points = Cal_robot(system2,-direction, servo_speed, start_angle, end_angle, final, force_coeff_r,video_name='robot_p2.gif',sim_time=sim_time)
+  final2, states2, y2,recovery_points = Cal_robot(system2,-direction, servo_speed, start_angle, end_angle, final, force_coeff_r,video_on=False,video_name='robot_p2.gif',sim_time=sim_time)
 
 
   full_stroke_points = forward_points
@@ -323,7 +336,7 @@ def cal_eff(video_flag):
   forward_dis = abs(dis1[0] - dis1[-1])
   backward_dis = abs(dis2[0] - dis2[-1])
   ieta = 1 - real_dis / abs(dis2[0] - dis2[-1])
-
+  print(ieta)
 
   plt.figure()
   plt.plot(dis * 1000)
