@@ -10,6 +10,7 @@ from pynamics.dyadic import Dyadic
 from pynamics.output import Output,PointsOutput
 from pynamics.particle import Particle, PseudoParticle
 import pynamics.integration
+from pynamics.constraint import AccelerationConstraint
 from pynamics import tanh
 import logging
 import time
@@ -28,7 +29,7 @@ from sympy import sin, cos
 plt.close('all')
 plt.ion()
 
-def Cal_robot(system,direction, angular_vel,start_angle, end_angle, ini_states,force_coeff,sim_time=False,video_on=True,video_name="swimming.gif"):
+def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=False,video_on=True,video_name="swimming.gif"):
 
   [body_force,arm_force_prep,arm_force_par] = force_coeff
 
@@ -37,7 +38,7 @@ def Cal_robot(system,direction, angular_vel,start_angle, end_angle, ini_states,f
   global_q = True
 
   if sim_time is False:
-    tfinal = abs((start_angle - end_angle) / angular_vel)
+    tfinal = 5
   else:
     tfinal = sim_time
   tinitial = 0
@@ -48,7 +49,7 @@ def Cal_robot(system,direction, angular_vel,start_angle, end_angle, ini_states,f
   tol_1 = 0
   tol_2 = 1e-8
   # Length of the body
-  lO = Constant(10 / 1000, 'lO', system)
+  lO = Constant(20 / 1000, 'lO', system)
   lR = Constant(60 / 1000, 'lR', system)
 
   # mass of the bodies
@@ -132,40 +133,26 @@ def Cal_robot(system,direction, angular_vel,start_angle, end_angle, ini_states,f
   foperp = body_force * nSoil
 
   body_vel_factor = tanh.gen_static_friction(vOcm.length(),1000, 0, 0*pi/180, -1, 1, 1,plot=False)
+  system.addforce(-foperp * body_vel_factor, vOcm)
 
-  system.addforce(foperp * body_vel_factor, vOcm)
-  # plt.show()
-  # plt.close('all')
-  # y2 = y
-
-  # looks like there should be no frame inside tanh such as N.y
-
-  # vel_factor2 = tanh.gen_spring_force2(vOcm.length(), 1000, 0, 0, 1, 1,0,plot=True)
-
-  # test_subs = numpy.r_[-2:2:100j]
-  # # Evulate if this method works. looks need some fine tuning so that .... less curve
-  # vel_subs = numpy.array([vel_factor2.evalf(subs={y_d:item}) for item in test_subs])
-  # plt.plot(test_subs,vel_subs)
-  #
-  # plt.show()
-  # plt.ion()
-  #   # End evulate
-
-  # system.addforce(foperp*vel_factor2 , vOcm)
-  # system.addforce(foperp, vOcm)
-
-
-
-  fin_vel_factor = tanh.gen_static_friction(nvRcm.length(), 1000, 0, 0 * pi / 180, -1, 1, 1, plot=True)
+  fin_vel_factor = tanh.gen_static_friction(vRcm.length(), 1000, 0, 0 * pi / 180, -1, 1, 1, plot=False)
   frperp = friction_arm_perp * nvRcm.dot(R.y) * R.y
   frpar = friction_arm_par * nvRcm.dot(R.x) * R.x
-  system.addforce(fin_vel_factor*(frperp + frpar), vRcm)
 
+  fin_friction = frperp+frpar
 
+  system.addforce(-fin_vel_factor*fin_friction, vRcm)
+
+  # This is using forced vel already but vel is still chanigng -- looks like eq_d - constant =0 is the old pynamics way if you wnat to using new pynamics, you want to do eq_dd
   eq = []
   eq_d = [(system.derivative(item)) for item in eq]
   eq_d.append(qR_d - angular_vel) # to make qR_d is zero
+
   eq_dd = [(system.derivative(item)) for item in eq_d]
+  # eq_dd_con = eq_dd.dot(R.x)
+  eq_dd_scalar = []
+  eq_dd_scalar.append(eq_dd)
+  system.add_constraint(AccelerationConstraint(eq_dd_scalar))
 
   f, ma = system.getdynamics()
   func1,lambda1 = system.state_space_post_invert(f,ma,constants = system.constant_values,return_lambda=True)
@@ -199,83 +186,51 @@ def Cal_robot(system,direction, angular_vel,start_angle, end_angle, ini_states,f
 
 
   if video_on:
-    plt.figure()
+    # plt.figure()
     points_output.animate(fps=1 / tstep, movie_name=video_name, lw=3, marker='o', color=(1, 0, 0, 1), linestyle='-')
-    plt.show()
+    # plt.show()
     # print(forward_limits)
     # plt.axis("equal")
     # plt.ion()
 
-    # plt.figure()
-    # plt.plot(states[:,2])
-    # # plt.plot(numpy.rad2deg(states[:,2]))
-    # plt.show()
+    fig,[dis_axis,ang_axis] = plt.subplots(2,1)
+    dis_axis.plot(states[:,0]*1e3)
+    dis_axis.plot(states[:, 3]*1e3,'--')
+    dis_axis.set_xlabel("Time (s)")
+    dis_axis.set_ylabel("dis/vel (mm)")
+    dis_axis.set_title("Body distance/vel vs. time")
+    dis_axis.legend({"y", "yd"})
+    dis_axis.grid('on')
+
+    ang_axis.plot(numpy.rad2deg(states[:,2]))
+    ang_axis.plot(numpy.rad2deg(states[:, -1]),'--')
+    ang_axis.set_title("Fin angle/vel vs. time")
+    ang_axis.legend({"qR","qrd"})
+    ang_axis.set_xlabel("Time (s)")
+    ang_axis.set_ylabel("angle/vel (deg)")
+    ang_axis.grid('on')
+
+
+    from matplotlib import colormaps
+
     plt.figure()
-    plt.plot(*(y1[::int(len(y1) / 20)].T) * 1000)
+    cmap = plt.get_cmap('bwr')
+    colors = cmap(numpy.linspace(0, 1, len(y1[::int(len(y1) / 20)])))  # Generate colors from the colormap
+    y1_plot = y1*1e3
+    for i, line in enumerate(y1_plot[::int(len(y1_plot) / 20)]):
+      plt.plot(*(line.T) , color=colors[i])
+    # plt.arrow(y1[0,0],y1[-1,0])
+    plt.arrow(y1_plot[0, 0][0],y1_plot[0, 0][1], y1_plot[-1, 0][0]-y1_plot[0, 0][0],y1_plot[-1, 0][1]-y1_plot[0, 0][1], head_width=2, head_length=5, fc='k', ec='k')
+
+
+    # plt.plot(*(y1[::int(len(y1) / 20)].T) * 1000,cmap='bwr')
     # plt.axis('equal')
     # plt.axis('equal')
-    plt.title("Plate Configuration vs Distance")
+    plt.title("Plate Configuration vs time (blue - red)")
     # plt.xlabel("Configuration")
     plt.ylabel("Distance (mm)")
+    plt.axis('equal')
     # plt.show()
-
-    #
-    # plt.figure()
-    # plt.plot(*(y1[0:10,::].T * 1000))
-    # plt.title("First couple of video")
-    # plt.show()
-    #
-    # plt.figure()
-    # plt.plot(*(y1[-10::,::].T * 1000))
-    # plt.title("Last couple of video")
-    # plt.show()
-    #
-    # plt.figure()
-    # plt.plot(*(y1[0:int(len(y1) / 30):,0:2].T * 1000))
-    # plt.title("Body location")
-    # plt.show()
-    #
-    # plt.figure()
-    # plt.plot(*(y1[0:int(len(y1) / 30):, 1:3].T * 1000))
-    # plt.title("FIn location")
-    # plt.show()
-
-
-
-    # plt.figure()
-    # plt.plot(t, numpy.rad2deg(states[:, 2]))
-    # # plt.plot(t, numpy.rad2deg(states[:, 8]))
-    # plt.legend(["qR", "qR_d"])
-    # plt.hlines(numpy.rad2deg(start_angle), tinitial, tfinal)
-    # plt.hlines(numpy.rad2deg(end_angle), tinitial, tfinal)
-    # plt.title("Robot Arm angle and velocitues (qR and qR_d) over Time")
-    # plt.xlabel("Time (s)")
-    # plt.ylabel("Angles,Velocities (deg, deg/s)")
-
-    # plt.figure()
-    # q_states = numpy.c_[(states[:, 2], states[:, 3], states[:, 4], states[:, 5])]
-    # plt.plot(t, numpy.rad2deg(q_states))
-    # plt.title("Joint Angule over Time")
-    # plt.xlabel("Time (s)")
-    # plt.ylabel("Joint Angles (deg)")
-    # plt.legend(["Arm", "Joint 1", "Joint 2", "Joint 3"])
-
-    # plt.figure()
-    # # qd_states = numpy.c_[(states[:, 8], states[:, 9], states[:, 10], states[:, 11])]
-    # plt.plot(t, numpy.rad2deg(qd_states))
-    # plt.legend(["qR_d", "qA_d", "qB_d", "qC_d"])
-    # plt.title("Joint Angular Velocities over Time")
-    # plt.xlabel("Time (s)")
-    # plt.ylabel("Joint Angular Velocities (deg/s)")
-    # plt.legend(["Arm", "Joint 1", "Joint 2", "Joint 3"])
-
-    # plt.figure()
-    # plt.plot(t, states[:, 0], '--')
-    # # plt.plot(t, states[:, -1])
-    # plt.title("Robot Distance and Velocity over time")
-    # plt.xlabel("Time (s)")
-    # plt.ylabel("Distance (mm)")
-    # plt.legend(["Distance", "Velocity of the robot"])
 
 
   else:
@@ -300,14 +255,13 @@ def cal_eff(video_flag):
   # DEfination
   # [y,qO,qR,y_d,qO_d,qR_d]
   # End def
-  servo_speed   = -pi/180*15
-  ini_angle     = pi/6
-  stroke_angle  = pi/3
+  # above zero -- positive below_zero -- negtive -- counterclockwise
+  servo_speed   = pi/180*15
+  ini_angle     = pi/180*-45
   ini_states = numpy.array([0, 0, ini_angle, 0, 0, servo_speed])
-  start_angle, end_angle = [ini_angle, ini_angle+stroke_angle]
   # Just add amplitude the direction is handlled inside
   fin_drag_reduction_coef   = 0.3
-  body_drag_reduction_coef  = 0.8
+  body_drag_reduction_coef  = 0.6
   fin_perp    = 15
   fin_par     = -2
   body_drag   = 20
@@ -315,10 +269,10 @@ def cal_eff(video_flag):
   force_coeff_p = [body_drag,fin_perp*fin_drag_reduction_coef,fin_par*fin_drag_reduction_coef]
   force_coeff_r = [body_drag*body_drag_reduction_coef, fin_perp, fin_par]
 
-  sim_time = 3
+  sim_time = 6
 
   system1 = System()
-  final1, states1, y1,forward_points = Cal_robot(system1,direction, servo_speed, start_angle, end_angle, ini_states,force_coeff_p,video_on=True,video_name='robot_p1.gif',sim_time=sim_time)
+  final1, states1, y1,forward_points = Cal_robot(system1,direction, servo_speed, ini_states,force_coeff_p,video_on=True,video_name='robot_p1.gif',sim_time=sim_time)
 
   # plt.plot(numpy.rad2deg(states1[:,2]))
   # plt.show()
@@ -327,7 +281,7 @@ def cal_eff(video_flag):
   final[-1] = -servo_speed
 
   system2 = System()
-  final2, states2, y2,recovery_points = Cal_robot(system2,-direction, servo_speed, start_angle, end_angle, final, force_coeff_r,video_on=True,video_name='robot_p2.gif',sim_time=sim_time)
+  final2, states2, y2,recovery_points = Cal_robot(system2,-direction, servo_speed, final, force_coeff_r,video_on=True,video_name='robot_p2.gif',sim_time=sim_time)
 
 
   full_stroke_points = forward_points
