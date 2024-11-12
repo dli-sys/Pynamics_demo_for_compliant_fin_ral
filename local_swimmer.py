@@ -132,10 +132,10 @@ def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=Fal
   nSoil = 1 / vSoil.length() * vSoil
   foperp = body_force * nSoil
 
-  body_vel_factor = tanh.gen_static_friction(vOcm.length(),1000, 0, 0*pi/180, -1, 1, 1,plot=False)
+  body_vel_factor = tanh.gen_static_friction(vOcm.length(),plot=False)
   system.addforce(-foperp * body_vel_factor, vOcm)
 
-  fin_vel_factor = tanh.gen_static_friction(vRcm.length(), 1000, 0, 0 * pi / 180, -1, 1, 1, plot=False)
+  fin_vel_factor = tanh.gen_static_friction(vRcm.length(), plot=False)
   frperp = friction_arm_perp * nvRcm.dot(R.y) * R.y
   frpar = friction_arm_par * nvRcm.dot(R.x) * R.x
 
