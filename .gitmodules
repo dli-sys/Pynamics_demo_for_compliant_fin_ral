@@ -1,4 +1,4 @@
 [submodule "code_pynamics"]
 	path = code_pynamics
 	url = https://github.com/dli-sys/code_pynamics.git
-	branch = compliant_fin_RAL_version
+	branch = master
