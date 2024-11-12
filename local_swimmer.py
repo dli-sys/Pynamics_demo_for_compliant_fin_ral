@@ -50,6 +50,7 @@ def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=Fal
   tol_2 = 1e-8
   # Length of the body
   lO = Constant(20 / 1000, 'lO', system)
+  lApater = Constant(20 / 1000, 'lA', system)
   lR = Constant(60 / 1000, 'lR', system)
 
   # mass of the bodies
@@ -66,6 +67,8 @@ def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=Fal
   Ixx_O = Constant(1, 'Ixx_O', system)
   Iyy_O = Constant(1, 'Iyy_O', system)
   Izz_O = Constant(1, 'Izz_O', system)
+
+  # This might need toi be adjusted based on the real location of CoM
   Ixx_R = Constant(1, 'Ixx_R', system)
   Iyy_R = Constant(1, 'Iyy_R', system)
   Izz_R = Constant(1, 'Izz_R', system)
@@ -103,11 +106,16 @@ def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=Fal
 
   pNO = 0 * N.x + y * N.y
   pOR = pNO + lO * N.x
+  # Just adding a dummry adapter that does not chaning anything so that I can calculate the location of the real force applied
+  pAdapter = pOR + lApater*R.x
   pRA = pOR + lR * R.x
 
 
   pOcm = pNO + lO / 2 * N.x
-  pRcm = pOR + lR / 2 * R.x
+
+  pRcm = pOR + lApater * R.x + (lR-lApater) /2 * R.x
+
+  # pRcm = pOR + lR / 2 * R.x
 
   # w is the rotation velocity and R is the angle
   wNO = N.get_w_to(O)
@@ -133,6 +141,9 @@ def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=Fal
   foperp = body_force * nSoil
 
   body_vel_factor = tanh.gen_static_friction(vOcm.length(),plot=False)
+  # Is this part real? Since RFT only applies to granular flow, so it's also state related
+  # In the paper, do you want to assume that everything is moving -- basically a flow
+  # Or you want to do something like velocity or state based programmming?
   system.addforce(-foperp * body_vel_factor, vOcm)
 
   fin_vel_factor = tanh.gen_static_friction(vRcm.length(), plot=False)
@@ -156,7 +167,7 @@ def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=Fal
 
   f, ma = system.getdynamics()
   func1,lambda1 = system.state_space_post_invert(f,ma,constants = system.constant_values,return_lambda=True)
-  points = [pNO, pOR,pRA]
+  points = [pNO, pOR,pAdapter,pRcm,pRA]
   # points = [pNO, pOR, pRA, pAB, pBC, pCtip]
 
   alpha = 1e6
@@ -257,19 +268,19 @@ def cal_eff(video_flag):
   # End def
   # above zero -- positive below_zero -- negtive -- counterclockwise
   servo_speed   = pi/180*15
-  ini_angle     = pi/180*-45
+  ini_angle     = pi/180*-60
   ini_states = numpy.array([0, 0, ini_angle, 0, 0, servo_speed])
   # Just add amplitude the direction is handlled inside
-  fin_drag_reduction_coef   = 0.6
-  body_drag_reduction_coef  = 0.6
-  fin_perp    = 15
+  fin_drag_reduction_coef   = 0.5
+  body_drag_reduction_coef  = 0.8
+  fin_perp    = 18
   fin_par     = -2
-  body_drag   = 20
+  body_drag   = 15
 
   force_coeff_p = [body_drag,fin_perp*fin_drag_reduction_coef,fin_par*fin_drag_reduction_coef]
   force_coeff_r = [body_drag*body_drag_reduction_coef, fin_perp, fin_par]
 
-  sim_time = 6
+  sim_time = 8
 
   system1 = System()
   final1, states1, y1,forward_points = Cal_robot(system1,direction, servo_speed, ini_states,force_coeff_p,video_on=True,video_name='robot_p1.gif',sim_time=sim_time)
