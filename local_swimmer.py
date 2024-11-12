@@ -260,7 +260,7 @@ def cal_eff(video_flag):
   ini_angle     = pi/180*-45
   ini_states = numpy.array([0, 0, ini_angle, 0, 0, servo_speed])
   # Just add amplitude the direction is handlled inside
-  fin_drag_reduction_coef   = 0.3
+  fin_drag_reduction_coef   = 0.6
   body_drag_reduction_coef  = 0.6
   fin_perp    = 15
   fin_par     = -2
