@@ -179,12 +179,12 @@ def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=Fal
 
   system.addforce(-fin_vel_factor*fin_friction, vRcm)
 
-  # fin_vel_factor = tanh.gen_static_friction(vLcm.length(), plot=False)
+  fin_vel_factor_L = tanh.gen_static_friction(vLcm.length(), plot=False)
   # fin_vel_factor = 1
-  # frperp = friction_arm_perp * nvLcm.dot(L.y) * L.y
-  # frpar = friction_arm_par * nvLcm.dot(L.x) * L.x
-  # fin_friction = frperp+frpar
-  # system.addforce(fin_vel_factor*fin_friction, vLcm)
+  frperp = friction_arm_perp * nvLcm.dot(L.y) * L.y
+  frpar = friction_arm_par * nvLcm.dot(L.x) * L.x
+  fin_friction = frperp+frpar
+  system.addforce(-fin_vel_factor_L*fin_friction, vLcm)
 
   # system.addforce(0, vLcm)
 
@@ -192,19 +192,21 @@ def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=Fal
   eq = []
   eq_d = [(system.derivative(item)) for item in eq]
   eq_d.append(qR_d - angular_vel) # to make qR_d is zero
+  angular_vel1 = ini_states[9]
+  eq_d.append(qL_d - angular_vel1)
 
   eq_dd = [(system.derivative(item)) for item in eq_d]
   # eq_dd_con = eq_dd.dot(R.x)
-  eq_dd_scalar = []
-  eq_dd_scalar.append(eq_dd)
+  eq_dd_scalar = [qR_dd,qL_dd]
+  # eq_dd_scalar.append([qR_dd],[qL_dd])
   system.add_constraint(AccelerationConstraint(eq_dd_scalar))
 
   f, ma = system.getdynamics()
 
 
   func1 = system.state_space_post_invert(f,ma,constants = system.constant_values)
-  points = [pLA, pOL, pNO, pOR, pRA]
 
+  points = [pLA, pOL, pNO, pOR, pRA]
 
   # points = [pLA,pLcm,pAdapterL , pOL,pNO, pOR, pAdapterL, pRcm, pRA]
   # points = [pNO, pOR,pAdapterL,pRcm,pRA]
@@ -305,7 +307,8 @@ def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=Fal
 
 
 if __name__ == "__main__":
-
+  plt.close('all')
+  plt.ion()
 
   # if error1 + error2 == 0:
   # logger1 = logging.getLogger('pynamics.system')
@@ -322,9 +325,9 @@ if __name__ == "__main__":
   # [y,qO,qR,y_d,qO_d,qR_d]
   # End def
   # above zero -- positive below_zero -- negtive -- counterclockwise
-  servo_speed   = pi/180*15
+  servo_speed   = pi/180*10
   ini_angle     = pi/180*-60
-  ini_states = numpy.array([0, 0, 0, ini_angle, -ini_angle, 0, 0, 0, servo_speed,0])
+  ini_states = numpy.array([0, 0, 0, ini_angle, -ini_angle, 0, 0, 0, servo_speed,-servo_speed])
   # Just add amplitude the direction is handlled inside
   fin_drag_reduction_coef   = 0.3
   body_drag_reduction_coef  = 0.6
@@ -345,6 +348,7 @@ if __name__ == "__main__":
   final = final1
   final[5::] = 0
   final[-2] = -servo_speed
+  final[-1] = servo_speed
 
   system2 = System()
   final2, states2, y2,recovery_points = Cal_robot(system2,-direction, servo_speed, final, force_coeff_r,video_on=True,video_name='robot_p2.gif',sim_time=sim_time)
@@ -353,20 +357,34 @@ if __name__ == "__main__":
   full_stroke_points = forward_points
   # points_output = PointsOutput(full_stroke_points, system1, constant_values=constants)
   # points_output.animate(fps=1 / tstep, movie_name=video_name, lw=2, marker='o', color=(1, 0, 0, 1), linestyle='-')
-
-  dis1 = states1[:, 0]
-  dis2 = states2[:, 0]
-  dis = numpy.append(dis1, dis2)
-  real_dis = abs(dis[0] - dis[-1])
-  forward_dis = abs(dis1[0] - dis1[-1])
-  backward_dis = abs(dis2[0] - dis2[-1])
-  ieta = 1 - real_dis / abs(dis2[0] - dis2[-1])
-  print(ieta)
-
   plt.figure()
-  plt.plot(dis * 1000)
-  plt.title("Robot distance over time")
-  plt.ylabel("Distance (mm)")
-  plt.show(block=True)
+  x1 = states1[:, 0] * 1e3
+  x2 = states2[:, 0] * 1e3
+  y1 = states1[:, 1] * 1e3
+  y2 = states2[:, 1] * 1e3
+  dis_x = numpy.append(x1, x2)
+  dis_y = numpy.append(y1, y2)
+  trajectories = []
+  for x, y in zip(dis_x, dis_y):
+    trajectories.append([x, y])
 
-  total_eta = ieta
+  cmap = plt.get_cmap('bwr')
+  colors = cmap(numpy.linspace(0, 1, len(dis_x)) ) # Generate colors from the colormap_
+  for idx,trajectory in enumerate(trajectories):
+    plt.plot(trajectory[0], trajectory[1],color=colors[idx],marker='o')
+  plt.axis("equal")
+  #
+
+
+
+  # real_dis = abs(dis[0] - dis[-1])
+  # forward_dis = abs(dis1[0] - dis1[-1])
+  # backward_dis = abs(dis2[0] - dis2[-1])
+  # ieta = 1 - real_dis / abs(dis2[0] - dis2[-1])
+  # print(ieta)
+
+  # plt.figure()
+  # plt.plot([dis_x,dis_y])
+  # plt.title("Robot distance over time")
+  # plt.ylabel("Distance (mm)")
+  plt.show(block=True)
