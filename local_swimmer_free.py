@@ -35,7 +35,6 @@ def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=Fal
 
   # time_a = time.time()
   pynamics.set_system(__name__, system)
-  global_q = True
 
   if sim_time is False:
     tfinal = 5
@@ -46,7 +45,7 @@ def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=Fal
   t = numpy.r_[tinitial:tfinal:tstep]
 
   # Add some tol so that nothing is divided by zero
-  tol_1 = 0
+  tol_1 = 1e-8
   tol_2 = 1e-8
   # Length of the body
   lO = Constant(30 / 1000, 'lO', system)
@@ -108,26 +107,21 @@ def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=Fal
   L = Frame('L',system)
 
   system.set_newtonian(N)
-  if not global_q:
-    O.rotate_fixed_axis(N, [0, 0, 1], qO, system)
-    R.rotate_fixed_axis(O, [0, 0, 1], qR, system)
-    L.rotate_fixed_axis(O, [0, 0, 1], qL, system)
 
-  else:
-    O.rotate_fixed_axis(N, [0, 0, 1], qO, system)
-    R.rotate_fixed_axis(N, [0, 0, 1], qR, system)
-    L.rotate_fixed_axis(N, [0, 0, 1], qL, system)
+  O.rotate_fixed_axis(N, [0, 0, 1], qO, system)
+  R.rotate_fixed_axis(N, [0, 0, 1], qR, system)
+  L.rotate_fixed_axis(N, [0, 0, 1], qL, system)
 
 
 
-  # pNO = 0 * N.x + y * N.y # For simulation on the rail
-  pNO = x * N.x + y * N.y # Free swimming exp
-  pOR = pNO + 0.5*lO * N.x
+  # pNO =  + y * N.y # For simulation on the rail
+  pNO = x * O.x + y * O.y # Free swimming exp
+  pOR = pNO + 0.5*lO * O.x
   # Just adding a dummry adapter that does not chaning anything so that I can calculate the location of the real force applied
   pAdapterR = pOR + lApater*R.x
   pRA = pOR + lR * R.x
 
-  pOL = pNO - 0.5*lO * N.x
+  pOL = pNO - 0.5*lO * O.x
   # Just adding a dummry adapter that does not chaning anything so that I can calculate the location of the real force applied
   pAdapterL = pOL - lApater*L.x
   pLA = pOL - lR * L.x
@@ -163,24 +157,35 @@ def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=Fal
   vLcm = pLcm.time_derivative()
 
   nvRcm = 1 / (vRcm.length() + tol_1) * vRcm
-
-  vSoil = -direction * 1 * N.y
-  nSoil = 1 / vSoil.length() * vSoil
-  foperp = body_force * nSoil
+  nvLcm = 1 / (vLcm.length() + tol_1) * vLcm
+  nvOcm = 1 / (vOcm.length() + tol_1) * vOcm
+  # vSoil = -direction * 1 * N.y
+  # nSoil = -1 / vSoil.length()
+  # foperp = body_force * nSoil
 
   body_vel_factor = tanh.gen_static_friction(vOcm.length(),plot=False)
+  # body_vel_factor = 1
   # Is this part real? Since RFT only applies to granular flow, so it's also state related
   # In the paper, do you want to assume that everything is moving -- basically a flow
   # Or you want to do something like velocity or state based programmming?
-  system.addforce(-foperp * body_vel_factor, vOcm)
+  system.addforce(-body_force*nvOcm*body_vel_factor, vOcm)
 
   fin_vel_factor = tanh.gen_static_friction(vRcm.length(), plot=False)
+  # fin_vel_factor = 1
   frperp = friction_arm_perp * nvRcm.dot(R.y) * R.y
   frpar = friction_arm_par * nvRcm.dot(R.x) * R.x
 
   fin_friction = frperp+frpar
 
   system.addforce(-fin_vel_factor*fin_friction, vRcm)
+
+  # fin_vel_factor = tanh.gen_static_friction(vLcm.length(), plot=False)
+  # fin_vel_factor = 1
+  # frperp = friction_arm_perp * nvLcm.dot(L.y) * L.y
+  # frpar = friction_arm_par * nvLcm.dot(L.x) * L.x
+  # fin_friction = frperp+frpar
+  # system.addforce(fin_vel_factor*fin_friction, vLcm)
+
   # system.addforce(0, vLcm)
 
   # This is using forced vel already but vel is still chanigng -- looks like eq_d - constant =0 is the old pynamics way if you wnat to using new pynamics, you want to do eq_dd
@@ -195,7 +200,9 @@ def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=Fal
   system.add_constraint(AccelerationConstraint(eq_dd_scalar))
 
   f, ma = system.getdynamics()
-  func1,lambda1 = system.state_space_post_invert(f,ma,constants = system.constant_values,return_lambda=True)
+
+
+  func1 = system.state_space_post_invert(f,ma,constants = system.constant_values)
   points = [pLA, pOL, pNO, pOR, pRA]
 
 
@@ -203,13 +210,13 @@ def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=Fal
   # points = [pNO, pOR,pAdapterL,pRcm,pRA]
   # points = [pNO, pOR, pRA, pAB, pBC, pCtip]
 
-  alpha = 1e6
-  beta = 1e5
+  alpha = 1e2
+  beta = 1e2
   error = 1e-3
   error_tol = 1e-3
 
-  states = pynamics.integration.integrate_odeint(func1, ini, t, rtol=1e-3, atol=1e-3,
-                                                 args=({'constants': {}, 'alpha': 1e2, 'beta': 1e1},))
+  states = pynamics.integration.integrate_odeint(func1, ini, t, rtol=1e-4, atol=1e-4,
+                                                 args=({'constants': {}, 'alpha': alpha, 'beta': beta},))
 
   # constants = system.constant_values
   # states = pynamics.integration.integrate_odeint(func1, ini, t,rtol = error, atol = error,  args=({'alpha':alpha,'beta':beta, 'constants':system.constant_values}),full_output = 1,mxstep = int(1e5))
@@ -239,20 +246,29 @@ def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=Fal
 
     fig,[dis_axis,ang_axis] = plt.subplots(2,1)
     dis_axis.plot(states[:,0]*1e3)
-    dis_axis.plot(states[:, 3]*1e3,'--')
+    dis_axis.plot(states[:, 5]*1e3,'--')
     dis_axis.set_xlabel("Time (s)")
     dis_axis.set_ylabel("dis/vel (mm)")
     dis_axis.set_title("Body distance/vel vs. time")
     dis_axis.legend({"y", "yd"})
     dis_axis.grid('on')
 
-    ang_axis.plot(numpy.rad2deg(states[:,2]))
+    ang_axis.plot(numpy.rad2deg(states[:,3]))
     ang_axis.plot(numpy.rad2deg(states[:, -1]),'--')
     ang_axis.set_title("Fin angle/vel vs. time")
     ang_axis.legend({"qR","qrd"})
     ang_axis.set_xlabel("Time (s)")
     ang_axis.set_ylabel("angle/vel (deg)")
     ang_axis.grid('on')
+
+    fig,rot_axis = plt.subplots(1,1)
+    rot_axis.plot(states[:,2])
+    rot_axis.plot(states[:, 7],'--')
+    rot_axis.set_xlabel("Time (s)")
+    rot_axis.set_ylabel("dis/vel (mm)")
+    rot_axis.set_title("Body Rotation/vel vs. time")
+    rot_axis.legend({"y", "yd"})
+    rot_axis.grid('on')
 
 
     from matplotlib import colormaps
@@ -306,20 +322,20 @@ if __name__ == "__main__":
   # [y,qO,qR,y_d,qO_d,qR_d]
   # End def
   # above zero -- positive below_zero -- negtive -- counterclockwise
-  servo_speed   = pi/180*0.1
-  ini_angle     = pi/180*0
-  ini_states = numpy.array([0, 0, 0, ini_angle, 0, 0, 0, 0, servo_speed,0])
+  servo_speed   = pi/180*15
+  ini_angle     = pi/180*-60
+  ini_states = numpy.array([0, 0, 0, ini_angle, -ini_angle, 0, 0, 0, servo_speed,0])
   # Just add amplitude the direction is handlled inside
-  fin_drag_reduction_coef   = 1
-  body_drag_reduction_coef  = 1
-  fin_perp    = 0.1
-  fin_par     = 0
-  body_drag   = 0.1
+  fin_drag_reduction_coef   = 0.3
+  body_drag_reduction_coef  = 0.6
+  fin_perp    = 10
+  fin_par     = -2
+  body_drag   = 10
 
   force_coeff_p = [body_drag,fin_perp*fin_drag_reduction_coef,fin_par*fin_drag_reduction_coef]
   force_coeff_r = [body_drag*body_drag_reduction_coef, fin_perp, fin_par]
 
-  sim_time = 8
+  sim_time = 4
 
   system1 = System()
   final1, states1, y1,forward_points = Cal_robot(system1,direction, servo_speed, ini_states,force_coeff_p,video_on=True,video_name='robot_p1.gif',sim_time=sim_time)
