@@ -351,7 +351,7 @@ if __name__ == "__main__":
   # above zero -- positive below_zero -- negtive -- counterclockwise
   servo_speed   = pi/180*10
   ini_angle     = pi/180*-60
-  ini_states = numpy.array([0, 0, 0, ini_angle, -ini_angle, 0, 0, 0, servo_speed,-servo_speed])
+  ini_states = numpy.array([0, 0, 0, ini_angle, ini_angle, 0, 0, 0, servo_speed,servo_speed])
   # Just add amplitude the direction is handlled inside
   fin_drag_reduction_coef   = 0.3
   body_drag_reduction_coef  = 0.6
@@ -386,32 +386,7 @@ if __name__ == "__main__":
   y  = full_out_y
   movie_name = "swimming.gif"
 
-  def point_anim(y1,fps = 30,stepsize=1,scale=1e3,movie_name = None,*args,**kwargs):
-    import matplotlib.pyplot as plt
-    from matplotlib import animation, rc
-    f = plt.figure()
-    y = y1*scale
-    ax = f.add_subplot(1, 1, 1, aspect='equal', autoscale_on=False)
-    limits = [y[:, :, 0].min(), y[:, :, 0].max(), y[:, :, 1].min(), y[:, :, 1].max()]
-    ax.axis(limits)
-    plt.ion()
-
-    line, = ax.plot([], [],*args,**kwargs)
-    def init():
-      line.set_data([], [])
-      return (line,)
-    def run(item):
-      line.set_data(*(item.T))
-      #            ax.axis('equal')
-      #            ax.axis(limits)
-      return (line,)
-    anim = animation.FuncAnimation(f, run, init_func=init, frames=y[::stepsize], interval=1 / fps * 1000, blit=True,
-                                        repeat=True, repeat_delay=3000)
-    if movie_name is not None:
-      anim.save(movie_name, fps=30, writer='ffmpeg')
-
-  point_anim(full_out_y,movie_name="full_swimming.gif",lw=2, marker='o', color=(1, 0, 0, 1), linestyle='-')
-
+  PointsOutput.point_anim(full_out_y,movie_name="full_swimming.gif",lw=2, marker='o', color=(1, 0, 0, 1), linestyle='-')
 
   # points_output = PointsOutput(full_stroke_points, system1, constant_values=constants)
   # points_output.animate(fps=1 / tstep, movie_name=video_name, lw=2, marker='o', color=(1, 0, 0, 1), linestyle='-')
