@@ -30,7 +30,7 @@ from sympy import sin, cos
 plt.close('all')
 plt.ion()
 
-def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=False,video_on=True,video_name="swimming.gif"):
+def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=False,video_on=True,video_name="swimming.gif",sim_mode="gm"):
 
   [body_drag_lg,body_drag_wd,arm_force_prep,arm_force_par] = force_coeff
 
@@ -167,32 +167,48 @@ def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=Fal
   nvRcm = 1 / (vRcm.length() + tol_1) * vRcm
   nvLcm = 1 / (vLcm.length() + tol_1) * vLcm
   nvOcm = 1 / (vOcm.length() + tol_1) * vOcm
-  # vSoil = -direction * 1 * N.y
-  # nSoil = -1 / vSoil.length()
-  # foperp = body_drag_lg * nSoil
 
-  body_vel_factor = tanh.gen_static_friction(vOcm.length(),plot=False)
-  # body_vel_factor = 1
-  # Is this part real? Since RFT only applies to granular flow, so it's also state related
-  # In the paper, do you want to assume that everything is moving -- basically a flow
-  # Or you want to do something like velocity or state based programmming?
-  system.addforce(-body_drag_lg*nvOcm*body_vel_factor, vOcm)
 
-  fin_vel_factor = tanh.gen_static_friction(vRcm.length(), plot=False)
-  # fin_vel_factor = 1
-  frperp = friction_arm_perp * nvRcm.dot(R.y) * R.y
-  frpar = friction_arm_par * nvRcm.dot(R.x) * R.x
+  if sim_mode == "gm":
+    # vSoil = -direction * 1 * N.y
+    # nSoil = -1 / vSoil.length()
+    # foperp = body_drag_lg * nSoil
+    body_vel_factor = tanh.gen_static_friction(vOcm.length(),plot=False)
+    # body_vel_factor = 1
+    # Is this part real? Since RFT only applies to granular flow, so it's also state related
+    # In the paper, do you want to assume that everything is moving -- basically a flow
+    # Or you want to do something like velocity or state based programmming?
+    system.addforce(-body_drag_lg*nvOcm*body_vel_factor, vOcm)
 
-  fin_friction = frperp+frpar
+    fin_vel_factor = tanh.gen_static_friction(vRcm.length(), plot=False)
+    # fin_vel_factor = 1
+    frperp = friction_arm_perp * nvRcm.dot(R.y) * R.y
+    frpar = friction_arm_par * nvRcm.dot(R.x) * R.x
 
-  system.addforce(-fin_vel_factor*fin_friction, vRcm)
+    fin_friction = frperp+frpar
 
-  fin_vel_factor_L = tanh.gen_static_friction(vLcm.length(), plot=False)
-  # fin_vel_factor = 1
-  frperp = friction_arm_perp * nvLcm.dot(L.y) * L.y
-  frpar = friction_arm_par * nvLcm.dot(L.x) * L.x
-  fin_friction = frperp+frpar
-  system.addforce(-fin_vel_factor_L*fin_friction, vLcm)
+    system.addforce(-fin_vel_factor*fin_friction, vRcm)
+
+    fin_vel_factor_L = tanh.gen_static_friction(vLcm.length(), plot=False)
+    # fin_vel_factor = 1
+    frperp = friction_arm_perp * nvLcm.dot(L.y) * L.y
+    frpar = friction_arm_par * nvLcm.dot(L.x) * L.x
+    fin_friction = frperp+frpar
+    system.addforce(-fin_vel_factor_L*fin_friction, vLcm)
+
+  if sim_mode =="water":
+    rho = Constant(1000,'rho',system)
+    Area = Constant(0.01,'Area',system)
+    # f_aero_C2 = rho * vAcm.length() * (vAcm.dot(A.y)) * Area * A.y
+
+    f_aero_body  = rho*vOcm.length()*(vOcm.dot(O.y))*Area*O.y*lO
+    f_aero_fin_L = rho*vLcm.length()*(vLcm.dot(O.y))*Area*L.y*lR
+    f_aero_fin_R = rho*vRcm.length()*(vRcm.dot(O.y))*Area*R.y*lR
+
+    system.addforce(-f_aero_body, vOcm)
+    system.addforce(-f_aero_fin_L, vLcm)
+    system.addforce(-f_aero_fin_R, vRcm)
+
 
   # system.addforce(0, vLcm)
 
@@ -352,7 +368,7 @@ if __name__ == "__main__":
 
   servo_speed   = pi/180*10
   ini_angle     = pi/180*-60
-  ini_states = numpy.array([0, 0, 0, ini_angle, ini_angle, 0, 0, 0, servo_speed,servo_speed*1.5])
+  ini_states = numpy.array([0, 0, 0, ini_angle, ini_angle, 0, 0, 0, servo_speed,servo_speed])
   # Just add amplitude the direction is handlled inside
   fin_drag_reduction_coef   = 0.3
   body_drag_reduction_coef  = 0.6
@@ -364,10 +380,12 @@ if __name__ == "__main__":
   force_coeff_p = [body_drag_lg,body_drag_wd,fin_perp*fin_drag_reduction_coef,fin_par*fin_drag_reduction_coef]
   force_coeff_r = [body_drag_lg*body_drag_reduction_coef,body_drag_wd*body_drag_reduction_coef, fin_perp, fin_par]
 
-  sim_time = 6
+  mode='water'
+  sim_time = 12
+
 
   system1 = System()
-  states1, y1,forward_points = Cal_robot(system1,direction, servo_speed, ini_states,force_coeff_p,video_on=True,video_name='robot_p1.gif',sim_time=sim_time)
+  states1, y1,forward_points = Cal_robot(system1,direction, servo_speed, ini_states,force_coeff_p,video_on=True,video_name='robot_p1.gif',sim_time=sim_time,sim_mode=mode)
   # plt.figure()
   # plt.plot(numpy.rad2deg(states1[:,2]))
   # plt.show()
@@ -376,11 +394,12 @@ if __name__ == "__main__":
   # clear the velocity
   final[5::] = 0
   # DEfine the velocity
-  final[-2] = -servo_speed
-  final[-1] = -servo_speed*1.5
+  final[-2] = -servo_speed * 2
+  final[-1] = -servo_speed * 2
+  sim_time = 6
 
   system2 = System()
-  states2, y2,recovery_points = Cal_robot(system2,-direction, servo_speed, final, force_coeff_r,video_on=True,video_name='robot_p2.gif',sim_time=sim_time)
+  states2, y2,recovery_points = Cal_robot(system2,-direction, servo_speed, final, force_coeff_r,video_on=True,video_name='robot_p2.gif',sim_time=sim_time,sim_mode=mode)
 
   full_out_y = numpy.vstack((y1,y2))
 
@@ -388,8 +407,7 @@ if __name__ == "__main__":
   movie_name = "swimming.gif"
 
   PointsOutput.point_anim(full_out_y,movie_name="full_swimming.gif",lw=2, marker='o', color=(1, 0, 0, 1), linestyle='-',title="Full swimming, unit (mm)")
-  # points_output = PointsOutput(full_stroke_points, system1, constant_values=constants)
-  # points_output.animate(fps=1 / tstep, movie_name=video_name, lw=2, marker='o', color=(1, 0, 0, 1), linestyle='-')
+
   plt.figure()
   x1 = states1[:, 0] * 1e3
   x2 = states2[:, 0] * 1e3
