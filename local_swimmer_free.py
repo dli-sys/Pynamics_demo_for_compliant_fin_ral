@@ -17,6 +17,7 @@ import time
 
 from numpy import pi
 import matplotlib
+from matplotlib import animation
 import matplotlib.pyplot as plt
 import sympy
 import numpy
@@ -119,9 +120,6 @@ def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=Fal
     O.rotate_fixed_axis(N, [0, 0, 1], qO, system)
     R.rotate_fixed_axis(N, [0, 0, 1], qR, system)
     L.rotate_fixed_axis(N, [0, 0, 1], qL, system)
-
-
-
 
 
   # pNO =  + y * N.y # For simulation on the rail
@@ -232,7 +230,7 @@ def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=Fal
   # constants = system.constant_values
   # states = pynamics.integration.integrate_odeint(func1, ini, t,rtol = error, atol = error,  args=({'alpha':alpha,'beta':beta, 'constants':system.constant_values}),full_output = 1,mxstep = int(1e5))
   # plt.plot(states[:,0])
-  final = numpy.asarray(states[-1, :])
+  # final = numpy.asarray(states[-1, :])
 
 
   # logger1 = logging.getLogger('pynamics.system')
@@ -245,7 +243,6 @@ def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=Fal
   # Here is how to use points to calculatethe video
   points_output = PointsOutput(points, system, constant_values=system.constant_values)
   y1 = points_output.calc(states,t)
-
 
   if video_on:
     # plt.figure()
@@ -309,7 +306,6 @@ def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=Fal
     # plt.arrow(y1[0,0],y1[-1,0])
     plt.arrow(y1_plot[0, 0][0],y1_plot[0, 0][1], y1_plot[-1, 0][0]-y1_plot[0, 0][0],y1_plot[-1, 0][1]-y1_plot[0, 0][1], head_width=2, head_length=5, fc='k', ec='k')
 
-
     # plt.plot(*(y1[::int(len(y1) / 20)].T) * 1000,cmap='bwr')
     # plt.axis('equal')
     # plt.axis('equal')
@@ -319,15 +315,13 @@ def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=Fal
     plt.axis('equal')
     # plt.show()
 
-    ax1 = points_output.animate(fps=1 / tstep, movie_name=video_name, lw=2, marker='o', color=(1, 0, 0, 1), linestyle='-')
+    # points_output.animate(fps=1 / tstep, movie_name=video_name,scale=1e3, lw=2, marker='o', color=(1, 0, 0, 1), linestyle='-')
     # plt.close()
     # points_output.animate(fps=1 / tstep, movie_name=video_name, lw=2, marker='o', color=(1, 0, 0, 1), linestyle='-')
-    plt.show()
-
-
+    # plt.show()
   else:
     pass
-  return final, states, y1, points,ax1
+  return states, y1, points
 
 
 # def cal_eff(video_flag):
@@ -357,7 +351,7 @@ if __name__ == "__main__":
   # above zero -- positive below_zero -- negtive -- counterclockwise
   servo_speed   = pi/180*10
   ini_angle     = pi/180*-60
-  ini_states = numpy.array([0, 0, 0, ini_angle, 0, 0, 0, 0, servo_speed,0])
+  ini_states = numpy.array([0, 0, 0, ini_angle, -ini_angle, 0, 0, 0, servo_speed,-servo_speed])
   # Just add amplitude the direction is handlled inside
   fin_drag_reduction_coef   = 0.3
   body_drag_reduction_coef  = 0.6
@@ -372,24 +366,53 @@ if __name__ == "__main__":
   sim_time = 6
 
   system1 = System()
-  final1, states1, y1,forward_points,ax1 = Cal_robot(system1,direction, servo_speed, ini_states,force_coeff_p,video_on=True,video_name='robot_p1.gif',sim_time=sim_time)
+  states1, y1,forward_points = Cal_robot(system1,direction, servo_speed, ini_states,force_coeff_p,video_on=True,video_name='robot_p1.gif',sim_time=sim_time)
   # plt.figure()
   # plt.plot(numpy.rad2deg(states1[:,2]))
   # plt.show()
   # plt.close()
-  final = final1
+  final =  numpy.asarray(states1[-1, :])
   # clear the velocity
   final[5::] = 0
   # DEfine the velocity
   final[-2] = -servo_speed
-  final[-1] = 0
+  final[-1] = servo_speed
 
   system2 = System()
-  final2, states2, y2,recovery_points,ax2 = Cal_robot(system2,-direction, servo_speed, final, force_coeff_r,video_on=True,video_name='robot_p2.gif',sim_time=sim_time)
+  states2, y2,recovery_points = Cal_robot(system2,-direction, servo_speed, final, force_coeff_r,video_on=True,video_name='robot_p2.gif',sim_time=sim_time)
 
-  print(ax1)
-  print(ax2)
-  full_stroke_points = forward_points
+  full_out_y = numpy.vstack((y1,y2))
+
+  y  = full_out_y
+  movie_name = "swimming.gif"
+
+  def point_anim(y1,fps = 30,stepsize=1,scale=1e3,movie_name = None,*args,**kwargs):
+    import matplotlib.pyplot as plt
+    from matplotlib import animation, rc
+    f = plt.figure()
+    y = y1*scale
+    ax = f.add_subplot(1, 1, 1, aspect='equal', autoscale_on=False)
+    limits = [y[:, :, 0].min(), y[:, :, 0].max(), y[:, :, 1].min(), y[:, :, 1].max()]
+    ax.axis(limits)
+    plt.ion()
+
+    line, = ax.plot([], [],*args,**kwargs)
+    def init():
+      line.set_data([], [])
+      return (line,)
+    def run(item):
+      line.set_data(*(item.T))
+      #            ax.axis('equal')
+      #            ax.axis(limits)
+      return (line,)
+    anim = animation.FuncAnimation(f, run, init_func=init, frames=y[::stepsize], interval=1 / fps * 1000, blit=True,
+                                        repeat=True, repeat_delay=3000)
+    if movie_name is not None:
+      anim.save(movie_name, fps=30, writer='ffmpeg')
+
+  point_anim(full_out_y,movie_name="full_swimming.gif",lw=2, marker='o', color=(1, 0, 0, 1), linestyle='-')
+
+
   # points_output = PointsOutput(full_stroke_points, system1, constant_values=constants)
   # points_output.animate(fps=1 / tstep, movie_name=video_name, lw=2, marker='o', color=(1, 0, 0, 1), linestyle='-')
   plt.figure()
@@ -409,9 +432,6 @@ if __name__ == "__main__":
     plt.plot(trajectory[0], trajectory[1],color=colors[idx],marker='.')
   plt.axis("equal")
   #
-
-
-
   # real_dis = abs(dis[0] - dis[-1])
   # forward_dis = abs(dis1[0] - dis1[-1])
   # backward_dis = abs(dis2[0] - dis2[-1])
