@@ -349,16 +349,17 @@ if __name__ == "__main__":
   # [y,qO,qR,y_d,qO_d,qR_d]
   # End def
   # above zero -- positive below_zero -- negtive -- counterclockwise
+
   servo_speed   = pi/180*10
   ini_angle     = pi/180*-60
-  ini_states = numpy.array([0, 0, 0, ini_angle, -ini_angle, 0, 0, 0, servo_speed,-servo_speed])
+  ini_states = numpy.array([0, 0, 0, ini_angle, ini_angle, 0, 0, 0, servo_speed,servo_speed*1.5])
   # Just add amplitude the direction is handlled inside
   fin_drag_reduction_coef   = 0.3
   body_drag_reduction_coef  = 0.6
   fin_perp    = 10
   fin_par     = -2
   body_drag_lg   = 20
-  body_drag_wd = -5
+  body_drag_wd = 0
 
   force_coeff_p = [body_drag_lg,body_drag_wd,fin_perp*fin_drag_reduction_coef,fin_par*fin_drag_reduction_coef]
   force_coeff_r = [body_drag_lg*body_drag_reduction_coef,body_drag_wd*body_drag_reduction_coef, fin_perp, fin_par]
@@ -376,7 +377,7 @@ if __name__ == "__main__":
   final[5::] = 0
   # DEfine the velocity
   final[-2] = -servo_speed
-  final[-1] = servo_speed
+  final[-1] = -servo_speed*1.5
 
   system2 = System()
   states2, y2,recovery_points = Cal_robot(system2,-direction, servo_speed, final, force_coeff_r,video_on=True,video_name='robot_p2.gif',sim_time=sim_time)
@@ -386,33 +387,7 @@ if __name__ == "__main__":
   y  = full_out_y
   movie_name = "swimming.gif"
 
-  def point_anim(y1,fps = 30,stepsize=1,scale=1e3,movie_name = None,*args,**kwargs):
-    import matplotlib.pyplot as plt
-    from matplotlib import animation, rc
-    f = plt.figure()
-    y = y1*scale
-    ax = f.add_subplot(1, 1, 1, aspect='equal', autoscale_on=False)
-    limits = [y[:, :, 0].min(), y[:, :, 0].max(), y[:, :, 1].min(), y[:, :, 1].max()]
-    ax.axis(limits)
-    plt.ion()
-
-    line, = ax.plot([], [],*args,**kwargs)
-    def init():
-      line.set_data([], [])
-      return (line,)
-    def run(item):
-      line.set_data(*(item.T))
-      #            ax.axis('equal')
-      #            ax.axis(limits)
-      return (line,)
-    anim = animation.FuncAnimation(f, run, init_func=init, frames=y[::stepsize], interval=1 / fps * 1000, blit=True,
-                                        repeat=True, repeat_delay=3000)
-    if movie_name is not None:
-      anim.save(movie_name, fps=30, writer='ffmpeg')
-
-  point_anim(full_out_y,movie_name="full_swimming.gif",lw=2, marker='o', color=(1, 0, 0, 1), linestyle='-')
-
-
+  PointsOutput.point_anim(full_out_y,movie_name="full_swimming.gif",lw=2, marker='o', color=(1, 0, 0, 1), linestyle='-',title="Full swimming, unit (mm)")
   # points_output = PointsOutput(full_stroke_points, system1, constant_values=constants)
   # points_output.animate(fps=1 / tstep, movie_name=video_name, lw=2, marker='o', color=(1, 0, 0, 1), linestyle='-')
   plt.figure()
