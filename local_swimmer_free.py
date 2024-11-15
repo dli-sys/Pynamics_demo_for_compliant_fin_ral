@@ -240,7 +240,6 @@ def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=Fal
 
   if video_on:
     # plt.figure()
-    points_output.animate(fps=1 / tstep, movie_name=video_name, lw=3, marker='o', color=(1, 0, 0, 1), linestyle='-')
     # plt.show()
     # print(forward_limits)
     # plt.axis("equal")
@@ -294,6 +293,9 @@ def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=Fal
     plt.axis('equal')
     # plt.show()
 
+    points_output.animate(fps=1 / tstep, movie_name=video_name, lw=3, marker='o', color=(1, 0, 0, 1), linestyle='-')
+    plt.show()
+
 
   else:
     pass
@@ -327,7 +329,7 @@ if __name__ == "__main__":
   # above zero -- positive below_zero -- negtive -- counterclockwise
   servo_speed   = pi/180*10
   ini_angle     = pi/180*-60
-  ini_states = numpy.array([0, 0, 0, ini_angle, -ini_angle, 0, 0, 0, servo_speed,-servo_speed])
+  ini_states = numpy.array([0, 0, 0, ini_angle, -ini_angle, 0, 0, 0, servo_speed,servo_speed])
   # Just add amplitude the direction is handlled inside
   fin_drag_reduction_coef   = 0.3
   body_drag_reduction_coef  = 0.6
@@ -338,7 +340,7 @@ if __name__ == "__main__":
   force_coeff_p = [body_drag,fin_perp*fin_drag_reduction_coef,fin_par*fin_drag_reduction_coef]
   force_coeff_r = [body_drag*body_drag_reduction_coef, fin_perp, fin_par]
 
-  sim_time = 4
+  sim_time = 8
 
   system1 = System()
   final1, states1, y1,forward_points = Cal_robot(system1,direction, servo_speed, ini_states,force_coeff_p,video_on=True,video_name='robot_p1.gif',sim_time=sim_time)
@@ -348,7 +350,7 @@ if __name__ == "__main__":
   final = final1
   final[5::] = 0
   final[-2] = -servo_speed
-  final[-1] = servo_speed
+  final[-1] = -servo_speed
 
   system2 = System()
   final2, states2, y2,recovery_points = Cal_robot(system2,-direction, servo_speed, final, force_coeff_r,video_on=True,video_name='robot_p2.gif',sim_time=sim_time)
@@ -371,7 +373,7 @@ if __name__ == "__main__":
   cmap = plt.get_cmap('bwr')
   colors = cmap(numpy.linspace(0, 1, len(dis_x)) ) # Generate colors from the colormap_
   for idx,trajectory in enumerate(trajectories):
-    plt.plot(trajectory[0], trajectory[1],color=colors[idx],marker='o')
+    plt.plot(trajectory[0], trajectory[1],color=colors[idx],marker='.')
   plt.axis("equal")
   #
 
