@@ -202,9 +202,13 @@ def Cal_robot(system,direction, angular_vel, ini_states,force_coeff,sim_time=Fal
     # f_aero_C2 = rho * vAcm.length() * (vAcm.dot(A.y)) * Area * A.y
 
     # this part is assumoing the force is always perep to the body, right?
-    f_aero_body  = rho*vOcm.length()*(vOcm.dot(O.y))*Area*O.y*lO
-    f_aero_fin_L = rho*vLcm.length()*(vLcm.dot(O.y))*Area*L.y*lR
-    f_aero_fin_R = rho*vRcm.length()*(vRcm.dot(O.y))*Area*R.y*lR
+    # f_aero_body  = rho*vOcm.length()*(vOcm.dot(O.y))*Area*O.y*lO
+    # f_aero_fin_L = rho*vLcm.length()*(vLcm.dot(O.y))*Area*L.y*lR
+    # f_aero_fin_R = rho*vRcm.length()*(vRcm.dot(O.y))*Area*R.y*lR
+
+    f_aero_body  = rho*vOcm.dot(O.y)*(vOcm.dot(O.y))*Area*O.y*lO * 1
+    f_aero_fin_L = rho*vLcm.dot(L.y)*(vLcm.dot(L.y))*Area*L.y*lR * 0.6
+    f_aero_fin_R = rho*vRcm.dot(R.y)*(vRcm.dot(R.y))*Area*R.y*lR * 0.6
 
     system.addforce(-f_aero_body, vOcm)
     system.addforce(-f_aero_fin_L, vLcm)
@@ -368,8 +372,8 @@ if __name__ == "__main__":
   # above zero -- positive below_zero -- negtive -- counterclockwise
 
   servo_speed   = pi/180*10
-  ini_angle     = pi/180*0
-  ini_states = numpy.array([0, 0, 0, ini_angle, ini_angle, 0, 0, 0, servo_speed,-servo_speed])
+  ini_angle     = pi/180*-60
+  ini_states = numpy.array([0, 0, 0, ini_angle, ini_angle, 0, 0, 0, servo_speed,servo_speed])
   # Just add amplitude the direction is handlled inside
   fin_drag_reduction_coef   = 0.3
   body_drag_reduction_coef  = 0.6
@@ -381,7 +385,7 @@ if __name__ == "__main__":
   force_coeff_p = [body_drag_lg,body_drag_wd,fin_perp*fin_drag_reduction_coef,fin_par*fin_drag_reduction_coef]
   force_coeff_r = [body_drag_lg*body_drag_reduction_coef,body_drag_wd*body_drag_reduction_coef, fin_perp, fin_par]
 
-  mode='water'
+  mode='gm'
   sim_time = 12
 
 
@@ -395,9 +399,9 @@ if __name__ == "__main__":
   # clear the velocity
   final[5::] = 0
   # DEfine the velocity
-  final[-2] = servo_speed * 3
-  final[-1] = -servo_speed * 3
-  sim_time = 6
+  final[-2] = -servo_speed * 1
+  final[-1] = -servo_speed * 1
+  sim_time = 12
 
   system2 = System()
   states2, y2,recovery_points = Cal_robot(system2,-direction, servo_speed, final, force_coeff_r,video_on=True,video_name='robot_p2.gif',sim_time=sim_time,sim_mode=mode)
@@ -405,9 +409,9 @@ if __name__ == "__main__":
   full_out_y = numpy.vstack((y1,y2))
 
   y  = full_out_y
-  movie_name = "swimming.gif"
+  movie_name = "swimming.mp4"
 
-  PointsOutput.point_anim(full_out_y,movie_name="full_swimming.gif",lw=2, marker='o', color=(1, 0, 0, 1), linestyle='-',title="Full swimming, unit (mm)")
+  PointsOutput.point_anim(full_out_y,movie_name=movie_name,lw=2, marker='o', color=(1, 0, 0, 1), linestyle='-',title="Full swimming, unit (mm)")
 
   plt.figure()
   x1 = states1[:, 0] * 1e3
@@ -422,8 +426,11 @@ if __name__ == "__main__":
 
   cmap = plt.get_cmap('bwr')
   colors = cmap(numpy.linspace(0, 1, len(dis_x)) ) # Generate colors from the colormap_
+
+  vis_step = 1e-3 if abs(dis_x[-1]-dis_x[0]) < 1e-3 else 0
+
   for idx,trajectory in enumerate(trajectories):
-    plt.plot(trajectory[0], trajectory[1],color=colors[idx],marker='.')
+    plt.plot(trajectory[0]+vis_step*idx, trajectory[1],color=colors[idx],marker='.')
   plt.axis("equal")
   #
   # real_dis = abs(dis[0] - dis[-1])
